@@ -4,15 +4,25 @@
 
 const char* vertexShaderSource = "#version 330 core\n"
 "layout(location=0)in vec3 aPos;\n"//layout (location = 0)设定了输入变量的位置值
+"layout (location = 1) in vec3 aColor;\n" // 颜色变量的属性位置值为 1
+//"out vec4 vertexColor; \n" // 为片段着色器指定一个颜色输出
+"out vec3 ourColor;\n"
 "void main()\n"
 "{\n"//gl_Position设置的值会成为该顶点着色器的输出(本次直接输出，不做处理)
 "gl_Position=vec4(aPos.x,aPos.y,aPos.z,1.0);\n"
+//"vertexColor = vec4(0.5, 0.0, 0.0, 1.0);\n" // 把输出变量设置为暗红色"
+"ourColor = aColor; \n"// 将ourColor设置为我们从顶点数据那里得到的输入颜色
 "}\0";
 const char* fragmentShaderSource = "#version 330 core\n"
 "out vec4 FragColor;\n"
+"in vec3 ourColor;\n"
+//"in vec4 vertexColor; \n"// 从顶点着色器传来的输入变量（名称相同、类型相同）
+//"uniform vec4 ourColor;\n" // 在OpenGL程序代码中设定这个变量
 "void main()\n"
 "{\n"//输出最终颜色rgba
-"  FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+//"  FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
+//"FragColor=vertexColor;\n"
+" FragColor = vec4(ourColor,1.0);\n"
 "}\0";
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -100,7 +110,6 @@ int main()
 	//	unsigned int VAO;
 	//	glGenVertexArrays(1, &VAO);//生成VAO
 	//	glBindVertexArray(VAO);
-
 	//	glBindBuffer(GL_ARRAY_BUFFER, VBO);//将新创建的缓冲绑定到GL_ARRAY_BUFFER目标上
 	//	//把用户定义的数据复制到当前绑定缓冲的函数。
 	//	//它的第一个参数是目标缓冲的类型：顶点缓冲对象当前绑定到GL_ARRAY_BUFFER目标上。
@@ -119,10 +128,10 @@ int main()
 	//正方形绘制---------------------------------
 	//正方形顶点，只包含四个顶点
 	float vertices[] = {
-	     0.5f, 0.5f, 0.0f,   // 右上角
-	     0.5f, -0.5f, 0.0f,  // 右下角
-	    -0.5f, -0.5f, 0.0f, // 左下角
-	    -0.5f, 0.5f, 0.0f   // 左上角
+	     0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f,  // 右上角
+	     0.5f, -0.5f, 0.0f,0.0f, 1.0f, 0.0f,  // 右下角
+	    -0.5f, -0.5f, 0.0f,0.0f, 0.0f, 1.0f, // 左下角
+	    -0.5f, 0.5f, 0.0f  ,1.0f, 0.5f, 0.0f, // 左上角
 	};
 	unsigned int indices[] = {
 		// 注意索引从0开始! 
@@ -147,7 +156,7 @@ int main()
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 	//---------------------------------------------------------------------
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
 	/*
 	 第一个参数指定我们要配置的顶点属性。我们在顶点着色器中使用layout(location = 0)定义了position顶点属性的位置值(Location)，
 	 	   它可以把顶点属性的位置值设置为0。因为我们希望把数据传递到这一个顶点属性中，所以这里我们传入0。
@@ -162,6 +171,9 @@ int main()
 	 	  由于位置数据在数组的开头，所以这里是0。
     */
 	glEnableVertexAttribArray(0);//以顶点属性位置值作为参数，启用顶点属性
+	// 颜色属性
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);//解绑
 	glBindVertexArray(0);//解绑
 	while (!glfwWindowShouldClose(window))//每次循环的开始前检查一次GLFW是否被要求退出
@@ -172,8 +184,13 @@ int main()
 		//处理渲染指令
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);//设置清空屏幕所用的颜色
 		glClear(GL_COLOR_BUFFER_BIT);//清空屏幕的颜色缓冲
-	
 		glUseProgram(shaderProgram);//激活程序对象
+		/*float timeValue = glfwGetTime();
+		float greenValue = (sin(timeValue) / 2.0f) + 0.5f;
+		int vertexColorLocation = glGetUniformLocation(shaderProgram, "ourColor");
+		
+		glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);*/
+		//glUseProgram(shaderProgram);
 		glBindVertexArray(VAO);//动态绑定VAO
 
 		//glDrawArrays(GL_TRIANGLES, 0, 3);//将提供的定点绘制为三角形
