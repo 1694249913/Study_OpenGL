@@ -15,6 +15,13 @@ const char* fragmentShaderSource = "#version 330 core\n"
 "  FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
 "}\0";
 
+const char* fragmentShaderSource2 = "#version 330 core\n"
+"out vec4 FragColor;\n"
+"void main()\n"
+"{\n"//输出最终颜色rgba
+"  FragColor = vec4(0.1f, 0.5f, 0.2f, 1.0f);\n"
+"}\0";
+
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 int main()
@@ -70,14 +77,25 @@ int main()
 		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED（片元着色器编译失败！）\n" << infoLog << std::endl;
 	}
 
+	unsigned int fragmentShader2;//片段着色器的引用ID
+	fragmentShader2 = glCreateShader(GL_FRAGMENT_SHADER);//创建片元着色器
+	glShaderSource(fragmentShader2, 1, &fragmentShaderSource2, NULL);
+	glCompileShader(fragmentShader2);
+
 	//-------着色器程序
 	unsigned int shaderProgram;
 	shaderProgram = glCreateProgram();
 
+	unsigned int shaderProgram2;
+	shaderProgram2 = glCreateProgram();
 	//附加着色器->链接程序
 	glAttachShader(shaderProgram, vertexShader);
 	glAttachShader(shaderProgram, fragmentShader);
 	glLinkProgram(shaderProgram);
+
+	glAttachShader(shaderProgram2, vertexShader);
+	glAttachShader(shaderProgram2, fragmentShader2);
+	glLinkProgram(shaderProgram2);
 	//检查连接是否成功
 	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
 	if (!success) {
@@ -88,6 +106,7 @@ int main()
 	//链接到程序对象后，删除着色器对象
 	glDeleteShader(vertexShader);
 	glDeleteShader(fragmentShader);
+	glDeleteShader(fragmentShader2);
 	//{//三角形绘制--------------------------------------------
 	//	//顶点数据数组，存储了位置信息
 	//	float vertices[] = {
@@ -118,35 +137,50 @@ int main()
 	
 	//正方形绘制---------------------------------
 	//正方形顶点，只包含四个顶点
-	float vertices[] = {
-	     0.5f, 0.5f, 0.0f,   // 右上角
-	     0.5f, -0.5f, 0.0f,  // 右下角
-	    -0.5f, -0.5f, 0.0f, // 左下角
-	    -0.5f, 0.5f, 0.0f   // 左上角
+	//float vertices[] = {
+	//	 0.25f, 0.5f, 0.0f,   // 右上角
+	//	 0.5f, -0.5f, 0.0f,
+	//	 0.0f, -0.5f, 0.0f,  // 右下角
+	//	-0.5f, -0.5f, 0.0f, // 左下角
+	//	-0.25f, 0.5f, 0.0f   // 左上角
+	//};
+	//unsigned int indices[] = {
+	//	// 注意索引从0开始! 
+	//	// 此例的索引(0,1,2,3)就是顶点数组vertices的下标，
+	//	// 这样可以由下标代表顶点组合成矩形
+
+	//	3, 4, 2, // 第一个三角形
+	//	2, 0, 1  // 第二个三角形
+	//};
+	//两个三角形--------------------------
+	float firstTriangle[] = {
+		-0.9f, -0.5f, 0.0f,  // left 
+		-0.0f, -0.5f, 0.0f,  // right
+		-0.45f, 0.5f, 0.0f,  // top 
 	};
-	unsigned int indices[] = {
-		// 注意索引从0开始! 
-		// 此例的索引(0,1,2,3)就是顶点数组vertices的下标，
-		// 这样可以由下标代表顶点组合成矩形
-
-		0, 1, 3, // 第一个三角形
-		1, 2, 3  // 第二个三角形
+	float secondTriangle[] = {
+		0.0f, -0.5f, 0.0f,  // left
+		0.9f, -0.5f, 0.0f,  // right
+		0.45f, 0.5f, 0.0f   // top 
 	};
 
-	unsigned int EBO,VAO, VBO;
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
-	glBindVertexArray(VAO);
+	unsigned int VAOs[2], VBOs[2];
+	glGenVertexArrays(2, VAOs);
+	glGenBuffers(2, VBOs);
+	//glGenBuffers(1, &EBO);
+	glBindVertexArray(VAOs[0]);
 
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBOs[0]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(firstTriangle), firstTriangle, GL_STATIC_DRAW);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	//与VBO类似，我们先绑定EBO然后用glBufferData把索引复制到缓冲里
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 	//---------------------------------------------------------------------
-
+	glBindVertexArray(VAOs[1]);
+	glBindBuffer(GL_ARRAY_BUFFER, VBOs[1]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(secondTriangle), secondTriangle, GL_STATIC_DRAW);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	/*
 	 第一个参数指定我们要配置的顶点属性。我们在顶点着色器中使用layout(location = 0)定义了position顶点属性的位置值(Location)，
@@ -174,8 +208,9 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT);//清空屏幕的颜色缓冲
 	
 		glUseProgram(shaderProgram);//激活程序对象
-		glBindVertexArray(VAO);//动态绑定VAO
-
+		glBindVertexArray(VAOs[0]);//动态绑定VAO
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+		//glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 		//glDrawArrays(GL_TRIANGLES, 0, 3);//将提供的定点绘制为三角形
 
 		/*第一个参数指定了我们绘制的模式，这个和glDrawArrays的一样。
@@ -185,7 +220,10 @@ int main()
 		 但是我们会在这里填写0。*/
 		//用glDrawElements来替换glDrawArrays函数，表示我们要从索引缓冲区渲染三角形。
 		//使用glDrawElements时，我们会使用当前绑定的索引缓冲对象中的索引进行绘制
-		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+		glUseProgram(shaderProgram2);//激活程序对象
+		glBindVertexArray(VAOs[1]);//动态绑定VAO
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+		//glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 		
 
 		//检查并调用事件，交换缓冲
@@ -193,10 +231,11 @@ int main()
 		glfwPollEvents();//检查有没有触发什么事件
 	}
 
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
-	glDeleteBuffers(1, &EBO);
+	glDeleteVertexArrays(1, VAOs);
+	glDeleteBuffers(1, VBOs);
+	//glDeleteBuffers(1, &EBO);
 	glDeleteProgram(shaderProgram);
+	glDeleteProgram(shaderProgram2);
 
 	glfwTerminate();//正确释放/删除之前的分配的所有资源
 	return 0;
