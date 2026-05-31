@@ -1,23 +1,31 @@
 #include<glad/glad.h>
 #include<GLFW/glfw3.h>
 #include<iostream>
+
+#include"shader_s.h"
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 const char* vertexShaderSource = "#version 330 core\n"
 "layout(location=0)in vec3 aPos;\n"//layout (location = 0)设定了输入变量的位置值
-"layout (location = 1) in vec3 aColor;\n"
-"layout (location = 2) in vec2 aTexCoord;\n"
-"out vec3 ourColor;\n"
+//"layout (location = 1) in vec3 aColor;\n"
+"layout(location = 1) in vec2 aTexCoord;\n"
+//"out vec3 ourColor;\n"
 "out vec2 TexCoord;\n"
+"uniform mat4 transform;\n"
 "void main()\n"
 "{\n"//gl_Position设置的值会成为该顶点着色器的输出(本次直接输出，不做处理)
-"gl_Position=vec4(aPos,1.0);\n"
-"ourColor=aColor;\n"
+"gl_Position=transform*vec4(aPos,1.0);\n"
+//"ourColor=aColor;\n"
 "TexCoord=aTexCoord;\n"
 "}\0";
 const char* fragmentShaderSource = "#version 330 core\n"
 "out vec4 FragColor;\n"
-"in vec3 ourColor;\n"
+//"in vec3 ourColor;\n"
 "in vec2 TexCoord;\n"
 "uniform sampler2D texture1;\n"
 "uniform sampler2D texture2;\n"
@@ -30,6 +38,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 int main()
 {
+	
 	glfwInit();//初始化GLFW
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);//配置GLFW
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);//同上设置主次版本号-3
@@ -51,88 +60,85 @@ int main()
 		std::cout << "Faild to initialize GLAD ( GLAD初始化失败！)" << std::endl;
 		return -1;
 	}
-	//---------顶点着色器
-	unsigned int vertexShader;//顶点着色器的引用ID
-	vertexShader = glCreateShader(GL_VERTEX_SHADER);//创建顶点着色器
-	//将源码附加到着色器对象上（要编译的着色器对象作为第一个参数。第二参数指定了传递的源码字符串数量，这里只有一个。第三个参数是顶点着色器真正的源码），并编译
-	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-	glCompileShader(vertexShader);//编译
-
-	//检查编译是否成功
-	int  success;
-	char infoLog[512];//储存错误消息的容器
-	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);//检查是否编译成功
-	if (!success)//未成功
-	{
-		//获取错误消息
-		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED（顶点着色器编译失败！）\n" << infoLog << std::endl;
-	}
-
-	// ----片元着色器
-	unsigned int fragmentShader;//片段着色器的引用ID
-	fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);//创建片元着色器
-	glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-	glCompileShader(fragmentShader);
-	if (!success)//未成功
-	{
-		//获取错误消息
-		glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED（片元着色器编译失败！）\n" << infoLog << std::endl;
-	}
-
-	//-------着色器程序
-	unsigned int shaderProgram;
-	shaderProgram = glCreateProgram();
-
-	//附加着色器->链接程序
-	glAttachShader(shaderProgram, vertexShader);
-	glAttachShader(shaderProgram, fragmentShader);
-	glLinkProgram(shaderProgram);
-	//检查连接是否成功
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-	if (!success) {
-		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-		std::cout << "ERROR::PROGRAM::LINKED_FAILED（着色器程序链接失败！）\n" << infoLog << std::endl;
-	}
-
-	//链接到程序对象后，删除着色器对象
-	glDeleteShader(vertexShader);
-	glDeleteShader(fragmentShader);
-	//{//三角形绘制--------------------------------------------
-	//	//顶点数据数组，存储了位置信息
-	//	float vertices[] = {
-	//	   -0.5f, -0.5f, 0.0f,
-	//		0.5f, -0.5f, 0.0f,
-	//		0.0f,  0.5f, 0.0f
-	//	};
-	//	unsigned int VBO;
-	//	glGenBuffers(1, &VBO);//生成一个带有缓冲ID的VBO对象
-	//	unsigned int VAO;
-	//	glGenVertexArrays(1, &VAO);//生成VAO
-	//	glBindVertexArray(VAO);
-	//	glBindBuffer(GL_ARRAY_BUFFER, VBO);//将新创建的缓冲绑定到GL_ARRAY_BUFFER目标上
-	//	//把用户定义的数据复制到当前绑定缓冲的函数。
-	//	//它的第一个参数是目标缓冲的类型：顶点缓冲对象当前绑定到GL_ARRAY_BUFFER目标上。
-	//	//第二个参数指定传输数据的大小(以字节为单位)；用一个简单的sizeof计算出顶点数据大小就行。
-	//	//第三个参数是我们希望发送的实际数据。
-	//	//第四个参数指定了我们希望显卡如何管理给定的数据。它有三种形式：
-	//	/*
-	//		GL_STATIC_DRAW ：数据不会或几乎不会改变。
-	//		GL_DYNAMIC_DRAW：数据会被改变很多。
-	//		GL_STREAM_DRAW ：数据每次绘制时都会改变。
-	//	*/
-	//	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	
+	Shader ourShader("vertex.vs", "fragment.fs");
+	////---------顶点着色器
+	//unsigned int vertexShader;//顶点着色器的引用ID
+	//vertexShader = glCreateShader(GL_VERTEX_SHADER);//创建顶点着色器
+	////将源码附加到着色器对象上（要编译的着色器对象作为第一个参数。第二参数指定了传递的源码字符串数量，这里只有一个。第三个参数是顶点着色器真正的源码），并编译
+	//glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+	//glCompileShader(vertexShader);//编译
+	////检查编译是否成功
+	//int  success;
+	//char infoLog[512];//储存错误消息的容器
+	//glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);//检查是否编译成功
+	//if (!success)//未成功
+	//{
+	//	//获取错误消息
+	//	glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+	//	std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED（顶点着色器编译失败！）\n" << infoLog << std::endl;
 	//}
+	//// ----片元着色器
+	//unsigned int fragmentShader;//片段着色器的引用ID
+	//fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);//创建片元着色器
+	//glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+	//glCompileShader(fragmentShader);
+	//if (!success)//未成功
+	//{
+	//	//获取错误消息
+	//	glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+	//	std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED（片元着色器编译失败！）\n" << infoLog << std::endl;
+	//}
+	////-------着色器程序
+	//unsigned int shaderProgram;
+	//shaderProgram = glCreateProgram();
+	////附加着色器->链接程序
+	//glAttachShader(shaderProgram, vertexShader);
+	//glAttachShader(shaderProgram, fragmentShader);
+	//glLinkProgram(shaderProgram);
+	////检查连接是否成功
+	//glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+	//if (!success) {
+	//	glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+	//	std::cout << "ERROR::PROGRAM::LINKED_FAILED（着色器程序链接失败！）\n" << infoLog << std::endl;
+	//}
+	////链接到程序对象后，删除着色器对象
+	//glDeleteShader(vertexShader);
+	//glDeleteShader(fragmentShader);
+	////{//三角形绘制--------------------------------------------
+	////	//顶点数据数组，存储了位置信息
+	////	float vertices[] = {
+	////	   -0.5f, -0.5f, 0.0f,
+	////		0.5f, -0.5f, 0.0f,
+	////		0.0f,  0.5f, 0.0f
+	////	};
+	////	unsigned int VBO;
+	////	glGenBuffers(1, &VBO);//生成一个带有缓冲ID的VBO对象
+	////	unsigned int VAO;
+	////	glGenVertexArrays(1, &VAO);//生成VAO
+	////	glBindVertexArray(VAO);
+	////	glBindBuffer(GL_ARRAY_BUFFER, VBO);//将新创建的缓冲绑定到GL_ARRAY_BUFFER目标上
+	////	//把用户定义的数据复制到当前绑定缓冲的函数。
+	////	//它的第一个参数是目标缓冲的类型：顶点缓冲对象当前绑定到GL_ARRAY_BUFFER目标上。
+	////	//第二个参数指定传输数据的大小(以字节为单位)；用一个简单的sizeof计算出顶点数据大小就行。
+	////	//第三个参数是我们希望发送的实际数据。
+	////	//第四个参数指定了我们希望显卡如何管理给定的数据。它有三种形式：
+	////	
+	////		GL_STATIC_DRAW ：数据不会或几乎不会改变。
+	////		GL_DYNAMIC_DRAW：数据会被改变很多。
+	////		GL_STREAM_DRAW ：数据每次绘制时都会改变。
+	////	
+	////	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	////}
 	
 	//正方形绘制---------------------------------
 	//正方形顶点，只包含四个顶点
 	float vertices[] = {
-	// ----位置----       ----颜色---- - 纹理坐标 -
-	 0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // 右上
-	 0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // 右下
-	-0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // 左下
-	-0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // 左上
+		// positions          // texture coords
+		0.5f,  0.5f, 0.0f,   1.0f, 1.0f, // top right
+		0.5f, -0.5f, 0.0f,   1.0f, 0.0f, // bottom right
+		-0.5f, -0.5f, 0.0f,   0.0f, 0.0f, // bottom left
+		-0.5f,  0.5f, 0.0f,   0.0f, 1.0f  // top left
 	};
 	unsigned int indices[] = {
 		// 注意索引从0开始! 
@@ -157,7 +163,7 @@ int main()
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 	//---------------------------------------------------------------------
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8* sizeof(float), (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5* sizeof(float), (void*)0);
 	/*
 	 第一个参数指定我们要配置的顶点属性。我们在顶点着色器中使用layout(location = 0)定义了position顶点属性的位置值(Location)，
 	 	   它可以把顶点属性的位置值设置为0。因为我们希望把数据传递到这一个顶点属性中，所以这里我们传入0。
@@ -172,10 +178,8 @@ int main()
 	 	  由于位置数据在数组的开头，所以这里是0。
     */
 	glEnableVertexAttribArray(0);//以顶点属性位置值作为参数，启用顶点属性
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-	glEnableVertexAttribArray(2);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);//解绑
 	glBindVertexArray(0);//解绑
 
@@ -227,9 +231,9 @@ int main()
 		std::cout << "Failed to load texture" << std::endl;
 	}
 	stbi_image_free(data);
-	glUseProgram(shaderProgram);//激活程序对象
-	glUniform1i(glGetUniformLocation(shaderProgram, "texture1"), 0);
-	glUniform1i(glGetUniformLocation(shaderProgram, "texture2"), 1);
+	ourShader.use();
+	ourShader.setInt("texture1", 0);
+	ourShader.setInt("texture2", 1);
 	while (!glfwWindowShouldClose(window))//每次循环的开始前检查一次GLFW是否被要求退出
 	{
 		//处理输入指令
@@ -244,7 +248,13 @@ int main()
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, texture2);
 
-		glUseProgram(shaderProgram);//激活程序对象
+		glm::mat4 transform = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+		transform = glm::translate(transform, glm::vec3(0.5f, -0.5f, 0.0f));
+		transform = glm::rotate(transform, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+		
+		ourShader.use();
+		unsigned int transformLoc = glGetUniformLocation(ourShader.ID, "transform"); 
+		glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
 		glBindVertexArray(VAO);//动态绑定VAO
 
 		//glDrawArrays(GL_TRIANGLES, 0, 3);//将提供的定点绘制为三角形
@@ -267,7 +277,6 @@ int main()
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
-	glDeleteProgram(shaderProgram);
 
 	glfwTerminate();//正确释放/删除之前的分配的所有资源
 	return 0;
